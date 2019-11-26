@@ -1,7 +1,42 @@
+import os
 import sys
+import pickle
 import numpy as np
+np.seterr(over="ignore")
+from pathlib import Path
 
 from ML_HW3 import datasets
+
+def savePickle(filename, data):
+    with open(filename, 'wb') as file:
+        pickle.dump(data, file, protocol=pickle.HIGHEST_PROTOCOL)
+
+def loadPickle(filename):
+    with open(filename, 'rb') as handle:
+        b = pickle.load(handle)
+    return b
+
+def storemodel(model, name):
+    root = str(Path(__file__).parent.parent)
+    modeldir = root + "/models"
+    checkandcreatedir(modeldir)
+    filepath = modeldir + "/" + name
+    savePickle(filepath, model)
+    print("saved", filepath)
+
+def loadmodel(filename):
+    root = str(Path(__file__).parent.parent)
+    modeldir = root + "/models"
+    filename = modeldir + "/" + filename
+    try:
+        model = loadPickle(filename)
+        return model
+    except:
+        raise Exception("Model not found: " + filename )
+
+def checkandcreatedir(path):
+    if not os.path.isdir(path):
+        os.makedirs(path)
 
 class NN:
     def __init__(self, x, y, iter=1000, lr=0.1):
@@ -16,8 +51,6 @@ class NN:
         ip_dim = self.input.shape[1]*self.input.shape[2] # input layer size 64
         op_dim = 2 # output layer size 10
 
-        # print(y.shape, ip_dim, op_dim)
-        # exit()
         self.w1 = np.random.randn(ip_dim, neurons_1) # weights
         self.b1 = np.zeros((1, neurons_1))           # biases
         self.w2 = np.random.randn(neurons_1, neurons_2)
@@ -45,18 +78,16 @@ class NN:
                 a[y] = 1
             else:
                 a[y] += 1
-            # print(x.shape, x.ravel().shape)
-            # exit()
             self.x = np.array([x.ravel()])
-            # print(self.x.shape)
-            # exit()
             self.y = self.one_hot_encoded(y)
             self.feedforward()
             self.backprop()
         print(a)
 
     def sigmoid(self, s):
-        return 1/(1 + np.exp(-1 * s))
+        s = np.round(s, decimals=5)
+        exp = 1/(1 + np.exp(-1 * s))
+        return exp
 
     def softmax(self, s):
         exps = np.exp(s - np.max(s, axis=1, keepdims=True))
@@ -108,12 +139,33 @@ class NN:
         self.b2 -= self.lr * np.sum(a2_delta, axis=0)
         self.w1 -= self.lr * np.dot(self.x.T, a1_delta)
         self.b1 -= self.lr * np.sum(a1_delta, axis=0)
+    
+    def predict(self, data):
+        self.x = np.array([data.ravel()])
+        self.feedforward()
+        print(self.a4)
+        if self.a4.argmax() == 0:
+            return 9
+        else:
+            return 7
 
 train_dataset = datasets.dataset(sys.argv[1])
 data = train_dataset.loadMNIST()
-# print(data['X'][0].shape)
 x_train = data["X"]
 y_train = data["Y"]
 
-nn = NN(x_train, y_train)
-nn.train()
+model_dir = -1
+if len(sys.argv) == 3:
+    model_dir = sys.argv[2]
+
+if model_dir == -1:
+    nn = NN(x_train, y_train)
+    nn.train()
+    storemodel(nn, "nn_model")
+else:
+    nn = loadmodel("nn_model")
+
+test = 6969
+x_test = x_train[test]
+y_test = y_train[test]
+print(nn.predict(x_test), y_test)
