@@ -51,7 +51,7 @@ if len(sys.argv) == 3:
 	model_dir = sys.argv[2]
 
 if model_dir == -1:
-	nn = neuralnetwork.NN(x_train, y_train, num_layers = 3, num_neurons = [100, 50, 50])
+	nn = neuralnetwork.NN(x_train, y_train, num_layers = 3, num_neurons = [100, 50, 50], epochs=5)
 	nn.train()
 	storemodel(nn, "nn_model")
 else:

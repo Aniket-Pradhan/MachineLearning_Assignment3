@@ -2,13 +2,14 @@ import numpy as np
 import progressbar
 
 class NN:
-    def __init__(self, x, y, lr=0.1, num_layers = 3, num_neurons = [100, 50, 50]):
+    def __init__(self, x, y, lr=0.1, num_layers = 3, num_neurons = [100, 50, 50], epochs=1):
         assert num_layers >= 1
         assert num_layers == len(num_neurons)
 
         self.input = x
         self.output = y
         self.lr = lr       # user defined learning rate
+        self.epochs = epochs
         # 3 hidden layers with 100, 50, 50 neurons
         neurons_1 = 100       # neurons for hidden layers
         neurons_2 = 50       # neurons for hidden layers
@@ -43,11 +44,13 @@ class NN:
         pass
     
     def train(self):
-        for x, y in progressbar.progressbar(zip(self.input, self.output)):
-            self.x = np.array([x.ravel()])
-            self.y = self.one_hot_encoded(y)
-            self.feedforward()
-            self.backprop()
+        for epoch in range(self.epochs):
+            print("epoch:", epoch+1)
+            for x, y in progressbar.progressbar(zip(self.input, self.output)):
+                self.x = np.array([x.ravel()])
+                self.y = self.one_hot_encoded(y)
+                self.feedforward()
+                self.backprop()
 
     def sigmoid(self, s):
         s = np.round(s, decimals=5)
