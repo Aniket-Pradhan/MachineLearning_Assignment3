@@ -13,9 +13,11 @@ class NN:
         neurons_1 = 100       # neurons for hidden layers
         neurons_2 = 50       # neurons for hidden layers
         neurons_3 = 50       # neurons for hidden layers
-        ip_dim = x.shape[0] # input layer size 64
-        op_dim = y.shape[0] # output layer size 10
+        ip_dim = self.input.shape[1]*self.input.shape[2] # input layer size 64
+        op_dim = 2 # output layer size 10
 
+        # print(y.shape, ip_dim, op_dim)
+        # exit()
         self.w1 = np.random.randn(ip_dim, neurons_1) # weights
         self.b1 = np.zeros((1, neurons_1))           # biases
         self.w2 = np.random.randn(neurons_1, neurons_2)
@@ -25,11 +27,33 @@ class NN:
         self.w4 = np.random.randn(neurons_3, op_dim)
         self.b4 = np.zeros((1, op_dim))
     
+    def one_hot_encoded(self, x):
+        # only 9 and 7... therefore encode only two bits
+        if x == 7:
+            return np.array([[0, 1]])
+        else:
+            return np.array([[1, 0]])
+        pass
+    
     def train(self):
-        for _ in range(iter):
-            print(_)
+        i = 0
+        a = {}
+        for x, y in zip(self.input, self.output):
+            print(i)
+            i+=1
+            if a.get(y) == None:
+                a[y] = 1
+            else:
+                a[y] += 1
+            # print(x.shape, x.ravel().shape)
+            # exit()
+            self.x = np.array([x.ravel()])
+            # print(self.x.shape)
+            # exit()
+            self.y = self.one_hot_encoded(y)
             self.feedforward()
             self.backprop()
+        print(a)
 
     def sigmoid(self, s):
         return 1/(1 + np.exp(-1 * s))
@@ -39,7 +63,7 @@ class NN:
         return exps/np.sum(exps, axis=1, keepdims=True)
 
     def feedforward(self):
-        z1 = np.dot(self.input, self.w1) + self.b1
+        z1 = np.dot(self.x, self.w1) + self.b1
         self.a1 = self.sigmoid(z1)
         z2 = np.dot(self.a1, self.w2) + self.b2
         self.a2 = self.sigmoid(z2)
@@ -58,14 +82,17 @@ class NN:
 
     def error(self, pred, real):
         n_samples = real.shape[0]
-        logp = - np.log(pred[np.arange(n_samples), real.argmax(axis=1)])
+        # real = np.array([0, 1])
+        arg_max = real.argmax(axis=0)
+        arr = np.arange(n_samples)
+        logp = - np.log(pred[arr, arg_max])
         loss = np.sum(logp)/n_samples
         return loss
 
     def backprop(self):
-        loss = self.error(self.a4, self.output)
+        loss = self.error(self.a4, self.y)
         print('Error :', loss)
-        a4_delta = self.cross_entropy(self.a4, self.output) # w4
+        a4_delta = self.cross_entropy(self.a4, self.y) # w4
         z3_delta = np.dot(a4_delta, self.w4.T)
         a3_delta = z3_delta * self.sigmoid_derv(self.a3) # w3
         z2_delta = np.dot(a3_delta, self.w3.T)
@@ -79,7 +106,7 @@ class NN:
         self.b3 -= self.lr * np.sum(a3_delta, axis=0)
         self.w2 -= self.lr * np.dot(self.a1.T, a2_delta)
         self.b2 -= self.lr * np.sum(a2_delta, axis=0)
-        self.w1 -= self.lr * np.dot(self.input.T, a1_delta)
+        self.w1 -= self.lr * np.dot(self.x.T, a1_delta)
         self.b1 -= self.lr * np.sum(a1_delta, axis=0)
 
 train_dataset = datasets.dataset(sys.argv[1])
@@ -88,6 +115,5 @@ data = train_dataset.loadMNIST()
 x_train = data["X"]
 y_train = data["Y"]
 
-nn = NN(x_train.ravel(), y_train)
-# nn.train()
-
+nn = NN(x_train, y_train)
+nn.train()
