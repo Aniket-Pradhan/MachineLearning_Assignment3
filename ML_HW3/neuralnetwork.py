@@ -67,6 +67,9 @@ class NN:
             if layer_ind == 0:
                 z = np.dot(self.x, w) + b
                 self.a[layer_ind] = self.sigmoid(z)
+            elif layer_ind == len(self.W)-1:
+                z = np.dot(self.a[layer_ind-1], w)
+                self.a[layer_ind] = self.softmax(z)
             else:
                 z = np.dot(self.a[layer_ind-1], w)
                 self.a[layer_ind] = self.sigmoid(z)
