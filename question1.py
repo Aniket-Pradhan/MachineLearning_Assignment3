@@ -15,7 +15,6 @@ from sklearn.model_selection import train_test_split
 
 from ML_HW3 import datasets
 from ML_HW3 import neuralnetwork
-from ML_HW3 import newralnet
 
 def savePickle(filename, data):
 	with open(filename, 'wb') as file:
