@@ -10,6 +10,8 @@ class NN:
         self.output = y
         self.lr = lr       # user defined learning rate
         self.epochs = epochs
+
+        self.losses = []
         # 3 hidden layers with 100, 50, 50 neurons
         neurons_1 = 100       # neurons for hidden layers
         neurons_2 = 50       # neurons for hidden layers
@@ -52,14 +54,15 @@ class NN:
                 self.feedforward()
                 self.backprop()
 
-    def sigmoid(self, s):
-        s = np.round(s, decimals=5)
-        exp = 1/(1 + np.exp(-1 * s))
-        return exp
+    def sigmoid(self, x):
+        return 1/(1+np.exp(-x))
 
-    def softmax(self, s):
-        exps = np.exp(s - np.max(s, axis=1, keepdims=True))
-        return exps/np.sum(exps, axis=1, keepdims=True)
+    def sigmoid_derv(self, x):
+        return self.sigmoid(x) *(1-self.sigmoid (x))
+
+    def softmax(self, A):
+        expA = np.exp(A)
+        return expA / expA.sum()
 
     def feedforward(self):
         for layer_ind, (w, b) in enumerate(zip(self.W, self.b)):
@@ -83,9 +86,6 @@ class NN:
         # z4 = np.dot(self.a3, self.w4) + self.b4
         # self.a4 = self.softmax(z4)
     
-    def sigmoid_derv(self, s):
-        return s * (1 - s)
-
     def cross_entropy(self, pred, real):
         n_samples = real.shape[0]
         res = pred - real
@@ -103,6 +103,7 @@ class NN:
     def backprop(self):
         loss = self.error(self.a[-1], self.y)
         # print('Error :', loss)
+        self.losses.append(loss)
         delta_a = [0] * len(self.a)
         delta_z = [0] * (len(self.a)-1)
         

@@ -7,14 +7,15 @@ np.seterr(over="ignore")
 from pathlib import Path
 from random import randrange
 import matplotlib.pyplot as plt
-from keras.utils import np_utils
-from sklearn.manifold import TSNE
+# from keras.utils import np_utils
+# from sklearn.manifold import TSNE
 from sklearn.metrics import accuracy_score
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import train_test_split
 
 from ML_HW3 import datasets
 from ML_HW3 import neuralnetwork
+from ML_HW3 import newralnet
 
 def savePickle(filename, data):
 	with open(filename, 'wb') as file:
@@ -56,8 +57,8 @@ model2 = args["model2"]
 
 dataset = datasets.dataset(dataset_path)
 data = dataset.loadMNIST()
-x_train, x_test, y_train, y_test = train_test_split(data["X"], data["Y"], test_size=0.2)
-x_train, x_valid, y_train, y_valid = train_test_split(x_train, y_train, test_size=0.2)
+x_train, x_test, y_train, y_test = train_test_split(data["X"], data["Y"], test_size=0.2, random_state = 0)
+x_train, x_valid, y_train, y_valid = train_test_split(x_train, y_train, test_size=0.2, random_state = 0)
 
 if model1 == "":
 	nn = neuralnetwork.NN(x_train, y_train, num_layers = 3, num_neurons = [100, 50, 50], epochs=1)
@@ -66,13 +67,14 @@ if model1 == "":
 else:
 	nn = loadmodel(model1)
 
-correct_pred = 0
+preds = []
 for x, y in zip(x_test, y_test):
-	pred = nn.predict(x)
-	if pred == y:
-		correct_pred += 1
-# print accuracy
-print("Accuracy:", correct_pred/x_test.shape[0])
+	preds.append(nn.predict(x))
+accuracy = accuracy_score(y_test, preds)
+print("Accuracy:", accuracy)
+
+plt.plot(nn.losses)
+plt.show()
 
 ## Part c
 # tsne = TSNE(n_components=2, verbose = 1)
