@@ -9,7 +9,7 @@ from random import randrange
 import matplotlib.pyplot as plt
 # from keras.utils import np_utils
 # from sklearn.manifold import TSNE
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, mean_squared_log_error
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import train_test_split
 
@@ -94,7 +94,7 @@ plt.xlabel("Training step")
 plt.ylabel("Cross Entropy loss")
 plt.title("Training loss v/s training step")
 
-plt.show()
+# plt.show()
 
 ## Part c
 # tsne = TSNE(n_components=2, verbose = 1)
@@ -117,6 +117,7 @@ plt.show()
 
 ## Part d
 x_train = np.reshape(x_train, (len(x_train), 28*28))
+x_valid = np.reshape(x_valid, (len(x_valid), 28*28))
 x_test = np.reshape(x_test, (len(x_test), 28*28))
 
 if model2 == "":
@@ -126,7 +127,23 @@ if model2 == "":
 else:
 	clf = loadmodel(model2)
 
-correct_pred = 0
+print("Training metrics...")
+pred = clf.predict(x_train)
+accuracy = accuracy_score(y_train, pred)
+loss = mean_squared_log_error(y_train, pred)
+print("Accuracy:", accuracy)
+print("Loss:", loss)
+
+print("Validation metrics...")
+pred = clf.predict(x_valid)
+accuracy = accuracy_score(y_valid, pred)
+loss = mean_squared_log_error(y_valid, pred)
+print("Accuracy:", accuracy)
+print("Loss:", loss)
+
+print("Test metrics...")
 pred = clf.predict(x_test)
 accuracy = accuracy_score(y_test, pred)
+loss = mean_squared_log_error(y_test, pred)
 print("Accuracy:", accuracy)
+print("Loss:", loss)
