@@ -6,115 +6,136 @@ import progressbar
 from pathlib import Path
 import matplotlib.pyplot as plt
 
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torch.nn.functional as F
-import torch.backends.cudnn as cudnn
-
-from ML_HW3 import datasets
+from sklearn.svm import LinearSVC
+from sklearn.preprocessing import label_binarize
+from sklearn.utils.multiclass import unique_labels
+from sklearn.metrics import roc_curve, auc, accuracy_score, confusion_matrix
 
 def savePickle(filename, data):
-	with open(filename, 'wb') as file:
-		pickle.dump(data, file, protocol=pickle.HIGHEST_PROTOCOL)
+    with open(filename, 'wb') as file:
+        pickle.dump(data, file, protocol=pickle.HIGHEST_PROTOCOL)
 
 def loadPickle(filename):
-	with open(filename, 'rb') as handle:
-		b = pickle.load(handle)
-	return b
+    with open(filename, 'rb') as handle:
+        b = pickle.load(handle)
+    return b
 
 def storemodel(model, name):
-	root = str(Path(__file__).parent.parent)
-	modeldir = root + "/models"
-	checkandcreatedir(modeldir)
-	filepath = modeldir + "/" + name
-	savePickle(filepath, model)
-	print("saved", filepath)
+    root = str(Path(__file__).parent.parent)
+    modeldir = root + "/models"
+    checkandcreatedir(modeldir)
+    filepath = modeldir + "/" + name
+    savePickle(filepath, model)
+    print("saved", filepath)
 
 def loadmodel(filename):
-	try:
-		model = loadPickle(filename)
-		return model
-	except:
-		raise Exception("Model not found: " + filename )
+    try:
+        model = loadPickle(filename)
+        return model
+    except:
+        raise Exception("Model not found: " + filename )
 
 def checkandcreatedir(path):
-	if not os.path.isdir(path):
-		os.makedirs(path)
+    if not os.path.isdir(path):
+        os.makedirs(path)
+
+def plot_confusion_matrix(y_true, y_pred, classes, normalize=False, title=None, cmap=plt.cm.PuRd):
+    cm = confusion_matrix(y_true, y_pred)
+    classes = classes[unique_labels(y_true, y_pred)]
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    fig, ax = plt.subplots()
+    im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+    ax.figure.colorbar(im, ax=ax)
+    ax.set(xticks=np.arange(cm.shape[1]),
+           yticks=np.arange(cm.shape[0]),
+           xticklabels=classes, yticklabels=classes,
+           title=title,
+           ylabel='True label',
+           xlabel='Predicted label')
+    plt.setp(ax.get_xticklabels(), rotation=45, ha="right", rotation_mode="anchor")
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            ax.text(j, i, format(cm[i, j], fmt),
+                    ha="center", va="center",
+                    color="white" if cm[i, j] > thresh else "black")
+    fig.tight_layout()
+    return ax
+
+test = 1
+storemodel(test, "test_model")
 
 ap = argparse.ArgumentParser()
-ap.add_argument("-t1", "--train", required=True, help="Path to the train dataset")
-ap.add_argument("-t2", "--test", required=True, help="Path to the test dataset")
+ap.add_argument("-t1", "--train", required=True, help="Path to the train features")
+ap.add_argument("-t2", "--test", required=True, help="Path to the test features")
+ap.add_argument("-m", "--model", required=False, default="", help="Path to the train features")
 args = ap.parse_args()
 
-train_dataset_path = args.train
-test_dataset_path = args.test
+train_features_path = args.train
+test_features_path = args.test
+model_dir = args.model if args.model != "" else False
 
-train_data = datasets.dataset(train_dataset_path)
-test_data = datasets.dataset(test_dataset_path)
-train_loader, train_dataset = train_data.loadCIFAR()
-test_loader, test_dataset = train_data.loadCIFAR()
+## Load data
+if not model_dir:
+    train_features = loadmodel(train_features_path)
+    train_x = train_features["X"]
+    train_y = train_features["Y"]
+    train_x = np.reshape(train_x, (len(train_x), 1000))
 
+test_features = loadmodel(test_features_path)
+test_x = test_features["X"]
+test_y = test_features["Y"]
+test_x = np.reshape(test_x, (len(test_x), 1000))
+class_names = np.array(list(set(test_y)))
+n_classes = len(class_names)
 
-"""
-Visualize the dataset
-# plt.imshow(image[0].numpy().astype('uint8'))
-# plt.show()
-# exit()
-"""
-
-if torch.cuda.is_available():
-	device = torch.device("cuda:0")
-	cudnn.benchmark = True
+## Train
+if not model_dir:
+    print("Training")
+    clf = LinearSVC(random_state=0, tol=1e-5)
+    clf.fit(train_x, train_y)
+    storemodel(clf, "cifar_svc")
 else:
-	device = torch.device("cpu")
+    clf = loadmodel(model_dir)
 
-print(device)
+## Test
+print("Predicting")
+preds = clf.predict(test_x)
 
-model = torch.hub.load('pytorch/vision:v0.4.2', 'alexnet', pretrained=True)
+## Get metrics
+# Accuracy
+accuracy = accuracy_score(test_y, preds)
+print("Accuracy:", accuracy)
 
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+# Confusion Matrix
+# confmat = confusion_matrix(test_y, preds)
+# plt.figure()
+plot_confusion_matrix(test_y, preds, classes=class_names, normalize=True, title='Normalized confusion matrix')
 
-for epoch in range(2):  # loop over the dataset multiple times
-	print("Epoch:", epoch+1)
-	print("\ntrain:")
-	model.train()
-	train_loss = 0
-	train_correct = 0
-	total = 0
-	for batch_num, (data, target) in progressbar.progressbar(enumerate(train_loader)):
-		data, target = data.to(device), target.to(device)
-		optimizer.zero_grad()
-		output = model(data)
-		loss = criterion(output, target)
-		loss.backward()
-		optimizer.step()
-		train_loss += loss.item()
-		prediction = torch.max(output, 1)  # second param "1" represents the dimension to be reduced
-		total += target.size(0)
+# ROC Curve
+# Compute ROC curve and ROC area for each class
+test_y = np.reshape(test_y, (len(test_y), 1))
+preds = np.reshape(preds, (len(preds), 1))
+fpr = dict()
+tpr = dict()
+roc_auc = dict()
+fpr[0], tpr[0], _ = roc_curve(test_y[:, 0], preds[:, 0])
+roc_auc[0] = auc(fpr[0], tpr[0])
 
-		# train_correct incremented by one if predicted right
-		train_correct += np.sum(prediction[1].cpu().numpy() == target.cpu().numpy())
-		if batch_num == 1:
-			storemodel(model, "test_model")
+# Compute micro-average ROC curve and ROC area
+fpr["micro"], tpr["micro"], _ = roc_curve(test_y.ravel(), preds.ravel())
+roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
 
-	print(train_loss, train_correct / total)
-	storemodel(model, str(epoch) + "_model")
-
-	## test
-	model.eval()
-	test_loss = 0
-	test_correct = 0
-	total = 0
-
-	with torch.no_grad():
-		for batch_num, (data, target) in enumerate(test_loader):
-			data, target = data.to(device), target.to(device)
-			output = model(data)
-			loss = criterion(output, target)
-			test_loss += loss.item()
-			prediction = torch.max(output, 1)
-			total += target.size(0)
-			test_correct += np.sum(prediction[1].cpu().numpy() == target.cpu().numpy())
-	print(test_loss, test_correct / total)
+plt.figure()
+lw = 1
+plt.plot(fpr[0], tpr[0], color='darkorange', lw=lw, label='ROC curve (area = %0.2f)' % roc_auc[0])
+plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve')
+plt.legend()
+plt.show()
