@@ -1,10 +1,24 @@
 import numpy as np
 import progressbar
 
+from sklearn.metrics import accuracy_score, log_loss, mean_squared_log_error
+
 class NN:
-    def __init__(self, x, y, lr=0.1, num_layers = 3, num_neurons = [100, 50, 50], epochs=1):
+    def __init__(self, x, y, x_valid, y_valid, x_test, y_test, lr=0.1, num_layers = 3, num_neurons = [100, 50, 50], epochs=1):
         assert num_layers >= 1
         assert num_layers == len(num_neurons)
+
+        self.x_valid = x_valid
+        self.y_valid = y_valid
+        self.x_test = x_test
+        self.y_test = y_test
+
+        self.train_losses = []
+        self.train_acc = []
+        self.valid_losses = []
+        self.valid_acc = []
+        self.test_losses = []
+        self.test_acc = []
 
         self.input = x
         self.output = y
@@ -48,11 +62,29 @@ class NN:
     def train(self):
         for epoch in range(self.epochs):
             print("epoch:", epoch+1)
+            print("Training...")
             for x, y in progressbar.progressbar(zip(self.input, self.output)):
                 self.x = np.array([x.ravel()])
                 self.y = self.one_hot_encoded(y)
                 self.feedforward()
                 self.backprop()
+            print("Trained")
+            
+            print("Training metrics...")
+            preds = []
+            for x, y in zip(self.input, self.output):
+                pred = self.predict(x)
+                preds.append(pred)
+            accuracy = accuracy_score(self.output, preds)
+            loss = mean_squared_log_error(self.output, preds)
+            self.train_acc.append(accuracy)
+            self.train_losses.append(loss)
+            
+            print("Validation metrics...")
+            self.validate()
+            print("Test metrics...")
+            self.test()
+            
 
     def sigmoid(self, x):
         return 1/(1+np.exp(-x))
@@ -152,3 +184,22 @@ class NN:
             return 9
         else:
             return 7
+    def validate(self):
+        preds = []
+        for x, y in zip(self.x_valid, self.y_valid):
+            pred = self.predict(x)
+            preds.append(pred)
+        accuracy = accuracy_score(self.y_valid, preds)
+        loss = mean_squared_log_error(self.y_valid, preds)
+        self.valid_acc.append(accuracy)
+        self.valid_losses.append(loss)
+
+    def test(self):
+        preds = []
+        for x, y in zip(self.x_test, self.y_test):
+            pred = self.predict(x)
+            preds.append(pred)
+        accuracy = accuracy_score(self.y_test, preds)
+        loss = mean_squared_log_error(self.y_test, preds)
+        self.test_acc.append(accuracy)
+        self.test_losses.append(loss)

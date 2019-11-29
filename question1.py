@@ -48,11 +48,13 @@ ap = argparse.ArgumentParser()
 ap.add_argument("-d", "--dataset", required=True, help="Path to the dataset")
 ap.add_argument("-m1", "--model1", required=False, default="", help="Path to first model (self NN)")
 ap.add_argument("-m2", "--model2", required=False, default="", help="Path to second model (sklearn MLP)")
+ap.add_argument("-e", "--epochs", required=False, default=1, help="Path to second model (sklearn MLP)")
 args = vars(ap.parse_args())
 
 dataset_path = args["dataset"]
 model1 = args["model1"]
 model2 = args["model2"]
+num_epochs = int(args["epochs"])
 
 dataset = datasets.dataset(dataset_path)
 data = dataset.loadMNIST()
@@ -60,19 +62,38 @@ x_train, x_test, y_train, y_test = train_test_split(data["X"], data["Y"], test_s
 x_train, x_valid, y_train, y_valid = train_test_split(x_train, y_train, test_size=0.2, random_state = 0)
 
 if model1 == "":
-	nn = neuralnetwork.NN(x_train, y_train, num_layers = 3, num_neurons = [100, 50, 50], epochs=1)
+	nn = neuralnetwork.NN(x_train, y_train, x_valid, y_valid, x_test, y_test, num_layers = 3, num_neurons = [100, 50, 50], epochs=num_epochs)
 	nn.train()
 	storemodel(nn, "nn_model")
 else:
 	nn = loadmodel(model1)
 
-preds = []
-for x, y in zip(x_test, y_test):
-	preds.append(nn.predict(x))
-accuracy = accuracy_score(y_test, preds)
-print("Accuracy:", accuracy)
+print(nn.train_losses, nn.valid_losses, nn.test_losses)
 
+plt.figure()
+plt.plot(nn.train_losses, label="Training Loss")
+plt.plot(nn.valid_losses, label="Validation Loss")
+plt.plot(nn.test_losses, label="Test Loss")
+plt.ylabel("Cross-Entropy loss")
+plt.xlabel("Epoch(s)")
+plt.legend()
+plt.title("Loss v/s Epochs")
+
+plt.figure()
+plt.plot(nn.train_acc, label="Training Accuracy")
+plt.plot(nn.valid_acc, label="Validation Accuracy")
+plt.plot(nn.test_acc, label="Test Accuracy")
+plt.ylabel("Accuracy")
+plt.xlabel("Epoch(s)")
+plt.legend()
+plt.title("Accuracy v/s Epochs")
+
+plt.figure()
 plt.plot(nn.losses)
+plt.xlabel("Training step")
+plt.ylabel("Cross Entropy loss")
+plt.title("Training loss v/s training step")
+
 plt.show()
 
 ## Part c
